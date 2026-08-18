@@ -1,0 +1,30 @@
+# name: test/sql/azure_wasm.test
+# description: azure_wasm registers the `azure` secret type and claims the Azure URL schemes
+# group: [sql]
+
+require azure_wasm
+
+# The `azure` secret type is registered by the extension — the CREATE SECRET shape an Iceberg REST
+# catalog vends (account_name + a connection_string carrying the SAS token).
+statement ok
+CREATE SECRET s1 (
+  TYPE azure,
+  PROVIDER config,
+  ACCOUNT_NAME 'acc',
+  CONNECTION_STRING 'AccountName=acc;SharedAccessSignature=sv=2022-11-02&sig=deadbeef'
+);
+
+query II
+SELECT name, type FROM duckdb_secrets() WHERE name = 's1';
+----
+s1	azure
+
+# The Azure schemes route into OUR filesystem: the error names azure_wasm, proving DuckDB did not
+# fall through to autoloading the (Wasm-unavailable) native `azure` extension. Table functions glob
+# the path first, and we deliberately don't implement Glob (Iceberg supplies explicit file paths),
+# so this is the reachable, deterministic, network-free assertion. The happy path (SAS rewrite ->
+# real HTTPS GET) needs a live SAS + CORS and lives in the Lakekeeper end-to-end test.
+statement error
+SELECT * FROM read_csv('abfss://c@acc.dfs.core.windows.net/f.csv');
+----
+not supported by azure_wasm
