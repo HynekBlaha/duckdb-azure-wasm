@@ -33,9 +33,7 @@ std::string AzureWasmExtension::Version() const {
 
 extern "C" {
 
-// DUCKDB_CPP_EXTENSION_ENTRY is the entry macro used by extension-ci-tools for DuckDB >= 1.2 (which
-// includes the v1.5.4 target). If you pin an older duckdb submodule, switch to the classic
-// `<name>_init(DatabaseInstance &)` form — see README.
+// DuckDB 2.0 C++ extension entry point, shared by native and Wasm builds.
 DUCKDB_CPP_EXTENSION_ENTRY(azure_wasm, loader) {
 	duckdb::LoadInternal(loader);
 }

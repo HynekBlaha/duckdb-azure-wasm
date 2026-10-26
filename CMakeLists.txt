@@ -8,12 +8,11 @@ project(${TARGET_NAME})
 
 include_directories(src/include)
 
-set(EXTENSION_SOURCES
-    src/azure_wasm_extension.cpp
-    src/azure_filesystem.cpp)
+set(EXTENSION_SOURCES src/azure_wasm_extension.cpp src/azure_filesystem.cpp)
 
-# No external dependencies: the whole point is that this reads Azure over plain HTTPS+SAS, so it
-# needs neither the Azure C++ SDK nor vcpkg — which is exactly why it compiles to Wasm.
+# No external dependencies: the whole point is that this reads Azure over plain
+# HTTPS+SAS, so it needs neither the Azure C++ SDK nor vcpkg — which is exactly
+# why it compiles to Wasm.
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 

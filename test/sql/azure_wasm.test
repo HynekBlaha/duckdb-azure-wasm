@@ -22,8 +22,8 @@ s1	azure
 # The Azure schemes route into OUR filesystem: the error names azure_wasm, proving DuckDB did not
 # fall through to autoloading the (Wasm-unavailable) native `azure` extension. Table functions glob
 # the path first, and we deliberately don't implement Glob (Iceberg supplies explicit file paths),
-# so this is the reachable, deterministic, network-free assertion. The happy path (SAS rewrite ->
-# real HTTPS GET) needs a live SAS + CORS and lives in the Lakekeeper end-to-end test.
+# so this checks routing without network access. test/node/azure-read.cjs covers reading through
+# the HTTPS filesystem with explicit file information and mocked HTTP responses.
 statement error
 SELECT * FROM read_csv('abfss://c@acc.dfs.core.windows.net/f.csv');
 ----
