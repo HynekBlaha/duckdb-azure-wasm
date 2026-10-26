@@ -59,6 +59,19 @@ public:
 	bool CanHandleFile(const string &fpath) override;
 	duckdb::unique_ptr<duckdb::FileHandle> OpenFile(const string &path, FileOpenFlags flags,
 	                                                optional_ptr<FileOpener> opener) override;
+	// File handles belong to the HTTPS filesystem that opened the resolved URL.
+	int64_t GetFileSize(FileHandle &handle) override;
+	void Read(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t location) override;
+	int64_t Read(FileHandle &handle, void *buffer, int64_t nr_bytes) override;
+	timestamp_t GetLastModifiedTime(FileHandle &handle) override;
+	string GetVersionTag(FileHandle &handle) override;
+	optional<timestamp_t> GetCacheValidUntil(FileHandle &handle) override;
+	FileType GetFileType(FileHandle &handle) override;
+	FileMetadata Stats(FileHandle &handle) override;
+	void Seek(FileHandle &handle, idx_t location) override;
+	idx_t SeekPosition(FileHandle &handle) override;
+	bool OnDiskFile(FileHandle &handle) override;
+	bool CanSeek() override;
 	bool FileExists(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
 	vector<OpenFileInfo> Glob(const string &path, FileOpener *opener = nullptr) override;
 	std::string GetName() const override {

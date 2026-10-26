@@ -34,15 +34,18 @@ CREATE SECRET (
 
 ## Build
 
-Requires the `duckdb` and `extension-ci-tools` submodules (pinned to DuckDB v1.5.4):
+Requires the `duckdb` and `extension-ci-tools` submodules (pinned to DuckDB v2.0.0):
 
 ```sh
 git clone --recurse-submodules https://github.com/HynekBlaha/duckdb-azure-wasm
 cd duckdb-azure-wasm
 make            # native -> build/release/extension/azure_wasm/azure_wasm.duckdb_extension
 make test       # runs test/sql/azure_wasm.test
+# Wasm builds require Emscripten 6.0.9 (the version used by extension-ci-tools):
+# source /path/to/emsdk/emsdk_env.sh
 make wasm_eh    # -> build/wasm_eh/.../azure_wasm.duckdb_extension.wasm
 make wasm_mvp
+make wasm_threads
 ```
 
 ## Install (community extension)

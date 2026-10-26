@@ -186,6 +186,54 @@ duckdb::unique_ptr<duckdb::FileHandle> AzureFileSystem::OpenFile(const string &p
 	return ResolveTargetFileSystem(opener).OpenFile(https_url, flags, nullptr);
 }
 
+int64_t AzureFileSystem::GetFileSize(FileHandle &handle) {
+	return handle.file_system.GetFileSize(handle);
+}
+
+void AzureFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t location) {
+	return handle.file_system.Read(handle, buffer, nr_bytes, location);
+}
+
+int64_t AzureFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+	return handle.file_system.Read(handle, buffer, nr_bytes);
+}
+
+timestamp_t AzureFileSystem::GetLastModifiedTime(FileHandle &handle) {
+	return handle.file_system.GetLastModifiedTime(handle);
+}
+
+string AzureFileSystem::GetVersionTag(FileHandle &handle) {
+	return handle.file_system.GetVersionTag(handle);
+}
+
+optional<timestamp_t> AzureFileSystem::GetCacheValidUntil(FileHandle &handle) {
+	return handle.file_system.GetCacheValidUntil(handle);
+}
+
+FileType AzureFileSystem::GetFileType(FileHandle &handle) {
+	return handle.file_system.GetFileType(handle);
+}
+
+FileMetadata AzureFileSystem::Stats(FileHandle &handle) {
+	return handle.file_system.Stats(handle);
+}
+
+void AzureFileSystem::Seek(FileHandle &handle, idx_t location) {
+	return handle.file_system.Seek(handle, location);
+}
+
+idx_t AzureFileSystem::SeekPosition(FileHandle &handle) {
+	return handle.file_system.SeekPosition(handle);
+}
+
+bool AzureFileSystem::OnDiskFile(FileHandle &handle) {
+	return handle.file_system.OnDiskFile(handle);
+}
+
+bool AzureFileSystem::CanSeek() {
+	return true;
+}
+
 bool AzureFileSystem::FileExists(const string &filename, optional_ptr<FileOpener> opener) {
 	auto https_url = ResolveHttpsURL(filename, opener);
 	return ResolveTargetFileSystem(opener).FileExists(https_url, nullptr);
