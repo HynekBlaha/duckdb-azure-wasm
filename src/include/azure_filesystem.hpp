@@ -72,6 +72,9 @@ public:
 	idx_t SeekPosition(FileHandle &handle) override;
 	bool OnDiskFile(FileHandle &handle) override;
 	bool CanSeek() override;
+	bool SupportsOpenFileExtended() const override;
+	duckdb::unique_ptr<duckdb::FileHandle> OpenFileExtended(const OpenFileInfo &file, FileOpenFlags flags,
+	                                                        optional_ptr<FileOpener> opener) override;
 	bool FileExists(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
 	vector<OpenFileInfo> Glob(const string &path, FileOpener *opener = nullptr) override;
 	std::string GetName() const override {

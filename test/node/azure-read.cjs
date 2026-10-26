@@ -133,6 +133,15 @@ test("Azure file handles read through their owning HTTPS filesystem", async (t) 
         }
       });
     }
+    await t.test("known file information avoids a HEAD request", () => {
+      connection.query("SET enable_external_file_cache=false");
+      requests.length = 0;
+      const result = connection.query(
+        `SELECT content FROM read_text([{'filename':'abfss://c@acc.dfs.core.windows.net/read.csv','file_size':${csv.length}::UBIGINT,'force_full_download':true}])`,
+      );
+      assert.equal(result.get(0).content, csv.toString());
+      assert.deepEqual(requests, ["GET"]);
+    });
     assert.ok(requests.includes("GET"));
   } finally {
     connection?.close();
