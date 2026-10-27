@@ -192,6 +192,11 @@ def main():
     runtime = source('runtime')
     fetch('Tencent/rapidjson', '973dc9c06dcd3d035ebd039cfb9ea457721ec213', runtime / 'submodules/rapidjson')
     fetch(*PINS['nanoarrow'], runtime / 'submodules/duckdb-nanoarrow')
+    patch_marker = core / '.wasm-runtime-patches'
+    if not patch_marker.exists():
+        for patch in sorted((runtime / 'patches/duckdb').glob('*.patch')):
+            run('patch', '--batch', '--forward', '-p1', '-i', patch, cwd=core)
+        patch_marker.write_text(PINS['runtime'][1])
     http = runtime / 'lib/src/http_wasm.cc'
     text = http.read_text()
     assert text.count('encodeURI(UTF8ToString(ptr2))') in (0, 5)
@@ -220,14 +225,23 @@ def main():
     run('bash', script, 'relsize', 'threads', core, cwd=runtime, env=env)
     tools = WORK / 'tools'
     run('npm', 'install', '--prefix', tools, '--ignore-scripts', '--no-audit', '--no-fund',
-        'esbuild@0.25.11', 'apache-arrow@17.0.0', 'qs@6.14.1')
+        'esbuild@0.25.11', 'apache-arrow@17.0.0', 'qs@6.14.1',
+        'web-worker@1.2.0', 'wasm-feature-detect@1.6.1', 'js-sha256@0.11.1', 'fast-glob@3.3.2')
     (runtime / 'node_modules').symlink_to(tools / 'node_modules', target_is_directory=True)
+    bindings = runtime / 'packages/duckdb-wasm/src/bindings'
+    (OUT / 'runtime').mkdir(exist_ok=True)
+    shutil.copy2(bindings / 'duckdb-threads.wasm', OUT / 'runtime/duckdb-threads.wasm')
+    (OUT / 'build-inputs').mkdir(exist_ok=True)
+    for name in ['duckdb-threads.js', 'duckdb-threads.pthread.js']:
+        shutil.copy2(bindings / name, OUT / 'build-inputs' / name)
     bundler = ROOT / 'scripts/wasm-threads-experiment/bundle.mjs'
     run('node', bundler, runtime, tools, OUT)
     manifest = {'duckdb_version': 'v2.0.0', 'platform': 'wasm_threads',
                 'pins': PINS, 'use_wasm_threads': True, 'runtime_etag_fix': True,
                 'default_settings': {'threads': 8, 'async_threads': 0},
-                'pthread_pool_size': 32, 'files': {}}
+                'pthread_pool_size': 32, 'files': {},
+                'runtime_core_patches': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in (runtime / 'patches/duckdb').glob('*.patch')}}
     for path in OUT.rglob('*'):
         if path.is_file():
             manifest['files'][str(path.relative_to(OUT))] = hashlib.sha256(path.read_bytes()).hexdigest()
