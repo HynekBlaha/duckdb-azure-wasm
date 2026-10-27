@@ -234,7 +234,8 @@ def main():
     shutil.copy2(bindings / 'duckdb-threads.wasm', OUT / 'runtime/duckdb-threads.wasm')
     (OUT / 'build-inputs').mkdir(exist_ok=True)
     for name in ['duckdb-threads.js', 'duckdb-threads.pthread.js']:
-        shutil.copy2(bindings / name, OUT / 'build-inputs' / name)
+        if (bindings / name).exists():
+            shutil.copy2(bindings / name, OUT / 'build-inputs' / name)
     bundler = ROOT / 'scripts/wasm-threads-experiment/bundle.mjs'
     run('node', bundler, runtime, tools, OUT)
     manifest = {'duckdb_version': 'v2.0.0', 'platform': 'wasm_threads',

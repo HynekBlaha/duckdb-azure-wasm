@@ -9,10 +9,12 @@ fs.mkdirSync(path.join(output, 'runtime'), { recursive: true });
 for (const [entry, name, format] of [
   ['targets/duckdb.ts', 'duckdb-browser.mjs', 'esm'],
   ['targets/duckdb-browser-threads.worker.ts', 'duckdb-browser-threads.worker.js', 'iife'],
-  ['targets/duckdb-browser-threads.pthread.worker.ts', 'duckdb-browser-threads.pthread.worker.js', 'iife'],
+  // Emscripten 6 uses the main worker entry for pthreads.
+  ['targets/duckdb-browser-threads.worker.ts', 'duckdb-browser-threads.pthread.worker.js', 'iife'],
 ]) {
   await build({ entryPoints: [path.join(source, entry)], bundle: true, minify: true,
     format, platform: 'browser', target: 'es2022',
+    define: { 'process.release.name': '"browser"' },
     external: ['fs', 'path', 'os', 'crypto', 'child_process', 'worker_threads', 'node:*'],
     outfile: path.join(output, 'runtime', name) });
 }
