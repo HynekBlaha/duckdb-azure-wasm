@@ -164,6 +164,17 @@ def main():
         run('git', 'checkout', PINS['avro'][1], cwd=avro)
         run('git', 'submodule', 'update', '--init', '--depth', '1', cwd=avro)
 
+
+    # The Wasm relink step needs Avro's bundled C library as an explicit input.
+    avro_cmake = avro / 'CMakeLists.txt'
+    avro_text = avro_cmake.read_text()
+    avro_archive = '${CMAKE_CURRENT_BINARY_DIR}/third_party/avro-c/lang/c/src/libavro.a'
+    if avro_archive not in avro_text:
+        avro_text = avro_text.replace(
+            '../../vcpkg_installed/wasm32-emscripten/lib/lib*.a',
+            '../../vcpkg_installed/wasm32-emscripten/lib/lib*.a ' + avro_archive)
+        avro_cmake.write_text(avro_text)
+
     config = WORK / 'extensions.cmake'
     config.write_text('\n'.join([
         'duckdb_extension_load(json EXTENSION_VERSION v2.0.0)', 'duckdb_extension_load(parquet EXTENSION_VERSION v2.0.0)',
