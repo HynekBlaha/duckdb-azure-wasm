@@ -238,7 +238,8 @@ def main():
     tools = WORK / 'tools'
     run('npm', 'install', '--prefix', tools, '--ignore-scripts', '--no-audit', '--no-fund',
         'esbuild@0.25.11', 'apache-arrow@17.0.0', 'qs@6.14.1',
-        'web-worker@1.2.0', 'wasm-feature-detect@1.6.1', 'js-sha256@0.11.1', 'fast-glob@3.3.2')
+        'web-worker@1.2.0', 'wasm-feature-detect@1.6.1', 'js-sha256@0.11.1', 'fast-glob@3.3.2',
+        'ws@7.5.5')
     (runtime / 'node_modules').symlink_to(tools / 'node_modules', target_is_directory=True)
     bindings = runtime / 'packages/duckdb-wasm/src/bindings'
     (OUT / 'runtime').mkdir(exist_ok=True)
