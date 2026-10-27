@@ -64,7 +64,7 @@ def configure(src, build, *flags):
         '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON', '-DCMAKE_C_FLAGS=-pthread -fPIC',
         '-DCMAKE_CXX_FLAGS=-pthread -fPIC', f'-DCMAKE_PREFIX_PATH={PREFIX}',
-        f'-DCMAKE_INSTALL_PREFIX={PREFIX}', '-DBUILD_SHARED_LIBS=OFF', *flags)
+        f'-DCMAKE_INSTALL_PREFIX={PREFIX}', f'-DCMAKE_FIND_ROOT_PATH={PREFIX}', '-DBUILD_SHARED_LIBS=OFF', *flags)
 
 
 def memory_is_shared(path):
@@ -142,10 +142,14 @@ def main():
         'zstd': ('build/cmake', ['-DZSTD_BUILD_PROGRAMS=OFF', '-DZSTD_BUILD_TESTS=OFF', '-DZSTD_BUILD_SHARED=OFF']),
     }
     for name, (subdir, flags) in dependencies.items():
+        stamp = PREFIX / ('.built-' + name)
+        if stamp.exists():
+            continue
         build = BUILD / name
         configure(source(name) / subdir, build, *flags)
         run('cmake', '--build', build, '-j', JOBS)
         run('cmake', '--install', build)
+        stamp.touch()
 
     core = source('duckdb')
     for name in ['httpfs', 'iceberg', 'azure_wasm']:
@@ -187,12 +191,19 @@ def main():
     text = http.read_text()
     assert text.count('encodeURI(UTF8ToString(ptr2))') == 5
     http.write_text(text.replace('encodeURI(UTF8ToString(ptr2))', 'UTF8ToString(ptr2)'))
+    cmake_source = runtime / 'lib/CMakeLists.txt'
+    text = cmake_source.read_text().replace('-sPTHREAD_POOL_SIZE=8', '-sPTHREAD_POOL_SIZE=32')
+    cmake_source.write_text(text)
+    external = runtime / 'lib/cmake/duckdb.cmake'
+    text = external.read_text().replace('  CMAKE_ARGS -G${CMAKE_GENERATOR}',
+        f'  CMAKE_ARGS -DCMAKE_PREFIX_PATH={PREFIX} -DCMAKE_FIND_ROOT_PATH={PREFIX} -G${{CMAKE_GENERATOR}}')
+    external.write_text(text)
     config_source = runtime / 'lib/src/config.cc'
     text = config_source.read_text()
     text = text.replace('? 4 : 1', '? 8 : 1')
     config_source.write_text(text)
     env = os.environ.copy()
-    env['EXTRA_CMAKE_FLAGS'] = '-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON'
+    env['EXTRA_CMAKE_FLAGS'] = f'-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON -DCMAKE_PREFIX_PATH={PREFIX} -DCMAKE_FIND_ROOT_PATH={PREFIX}'
     # Bound compile parallelism independently of the runner's reported CPU count.
     script = runtime / 'scripts/wasm_build_lib.sh'
     text = script.read_text().replace('CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)', f'CORES={JOBS}')
@@ -207,7 +218,7 @@ def main():
     manifest = {'duckdb_version': 'v2.0.0', 'platform': 'wasm_threads',
                 'pins': PINS, 'use_wasm_threads': True, 'runtime_etag_fix': True,
                 'default_settings': {'threads': 8, 'async_threads': 0},
-                'pthread_pool_size': 8, 'files': {}}
+                'pthread_pool_size': 32, 'files': {}}
     for path in OUT.rglob('*'):
         if path.is_file():
             manifest['files'][str(path.relative_to(OUT))] = hashlib.sha256(path.read_bytes()).hexdigest()

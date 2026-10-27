@@ -24,6 +24,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build ccache pkg-config
           npm install --global js-beautify
+      - uses: actions/cache/restore@v4
+        id: dependencies
+        with:
+          path: .wasm-threads/build/extensions/vcpkg_installed
+          key: lakekeeper-wasm-pthread-pic-dependencies-v1
       - name: Build pinned threaded runtime and extensions
         run: python3 -u scripts/wasm-threads-experiment/build.py
       - uses: actions/upload-artifact@v4
@@ -39,3 +44,8 @@ jobs:
             .wasm-threads/build/**/CMakeCache.txt
             .wasm-threads/build/**/CMakeConfigureLog.yaml
             .wasm-threads/sources/runtime/build/**/CMakeCache.txt
+      - uses: actions/cache/save@v4
+        if: always() && steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: .wasm-threads/build/extensions/vcpkg_installed
+          key: lakekeeper-wasm-pthread-pic-dependencies-v1
