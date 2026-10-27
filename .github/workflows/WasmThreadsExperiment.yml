@@ -2,6 +2,7 @@ name: Pinned Lakekeeper WASM threads experiment
 on:
   push:
     branches: [experiment/wasm-threads-20261027]
+    paths: ['scripts/wasm-threads-experiment/**']
 permissions:
   contents: read
 jobs:

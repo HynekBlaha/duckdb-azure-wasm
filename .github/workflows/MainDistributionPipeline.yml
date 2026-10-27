@@ -13,7 +13,6 @@ concurrency:
 
 jobs:
   duckdb-stable-build:
-    if: false
     name: Build extension binaries
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0-cyanoptera
     with:
@@ -24,7 +23,6 @@ jobs:
       opt_in_archs: wasm_mvp;wasm_eh;wasm_threads
 
   code-quality-check:
-    if: false
     name: Code Quality Check
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v2.0-cyanoptera
     with:
