@@ -64,7 +64,7 @@ def configure(src, build, *flags):
     run('emcmake', 'cmake', '-G', 'Ninja', '-S', src, '-B', build,
         '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON', '-DCMAKE_C_FLAGS=-pthread -fPIC',
-        '-DCMAKE_CXX_FLAGS=-pthread -fPIC', '-DCMAKE_C_COMPILER_LAUNCHER=ccache',
+        '-DCMAKE_CXX_FLAGS=-pthread -fPIC -fwasm-exceptions -DWEBDB_FAST_EXCEPTIONS=1', '-DCMAKE_C_COMPILER_LAUNCHER=ccache',
         '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache', f'-DCMAKE_PREFIX_PATH={PREFIX}',
         f'-DCMAKE_INSTALL_PREFIX={PREFIX}', f'-DCMAKE_FIND_ROOT_PATH={PREFIX}', '-DBUILD_SHARED_LIBS=OFF', *flags)
 
