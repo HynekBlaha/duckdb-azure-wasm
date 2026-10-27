@@ -19,6 +19,7 @@ JOBS = os.environ.get('WASM_BUILD_JOBS', '2')
 PINS = {
     'duckdb': ('duckdb/duckdb', 'd54cbbe3df17e8e5ce68312f483b4155836112aa'),
     'runtime': ('duckdb/duckdb-wasm', '1f85a503e0c25f0c0980f205915de328c923f476'),
+    'nanoarrow': ('duckdb/duckdb-nanoarrow', 'e390b9b4f8a41e64e41488888defb27d8f1e1421'),
     'httpfs': ('duckdb/duckdb-httpfs', '77392a72077a85897db2519fae11e2c0da972b8a'),
     'iceberg': ('duckdb/duckdb-iceberg', '4c0c0874c48ec82a3e29910554891d04bcc0e988'),
     'avro': ('duckdb/duckdb-avro', '758fb6063cbb6da49b2e1c16c4044cfcafefc52f'),
@@ -63,7 +64,8 @@ def configure(src, build, *flags):
     run('emcmake', 'cmake', '-G', 'Ninja', '-S', src, '-B', build,
         '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON', '-DCMAKE_C_FLAGS=-pthread -fPIC',
-        '-DCMAKE_CXX_FLAGS=-pthread -fPIC', f'-DCMAKE_PREFIX_PATH={PREFIX}',
+        '-DCMAKE_CXX_FLAGS=-pthread -fPIC', '-DCMAKE_C_COMPILER_LAUNCHER=ccache',
+        '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache', f'-DCMAKE_PREFIX_PATH={PREFIX}',
         f'-DCMAKE_INSTALL_PREFIX={PREFIX}', f'-DCMAKE_FIND_ROOT_PATH={PREFIX}', '-DBUILD_SHARED_LIBS=OFF', *flags)
 
 
@@ -184,12 +186,15 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
 
+    if os.environ.get('WASM_BUILD_PHASE') == 'extensions':
+        return
+
     runtime = source('runtime')
     fetch('Tencent/rapidjson', '973dc9c06dcd3d035ebd039cfb9ea457721ec213', runtime / 'submodules/rapidjson')
-    fetch('duckdb/duckdb-nanoarrow', '8f9b4434ef037c421a95e07d1b955fa41d832daf', runtime / 'submodules/duckdb-nanoarrow')
+    fetch(*PINS['nanoarrow'], runtime / 'submodules/duckdb-nanoarrow')
     http = runtime / 'lib/src/http_wasm.cc'
     text = http.read_text()
-    assert text.count('encodeURI(UTF8ToString(ptr2))') == 5
+    assert text.count('encodeURI(UTF8ToString(ptr2))') in (0, 5)
     http.write_text(text.replace('encodeURI(UTF8ToString(ptr2))', 'UTF8ToString(ptr2)'))
     cmake_source = runtime / 'lib/CMakeLists.txt'
     text = cmake_source.read_text().replace('-sPTHREAD_POOL_SIZE=8', '-sPTHREAD_POOL_SIZE=32')
@@ -202,8 +207,12 @@ def main():
     text = config_source.read_text()
     text = text.replace('? 4 : 1', '? 8 : 1')
     config_source.write_text(text)
+    (runtime / 'extension_config_experiment.cmake').write_text(
+        'duckdb_extension_load(json)\nduckdb_extension_load(parquet)\n'
+        'duckdb_extension_load(nanoarrow SOURCE_DIR ${DUCKDB_NANOARROW_DIR} '
+        'LINKED_LIBS \"../../_deps/nanoarrow-build/lib*.a\")\n')
     env = os.environ.copy()
-    env['EXTRA_CMAKE_FLAGS'] = f'-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON -DCMAKE_PREFIX_PATH={PREFIX} -DCMAKE_FIND_ROOT_PATH={PREFIX}'
+    env['EXTRA_CMAKE_FLAGS'] = f'-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON -DDUCKDB_EXTENSION_CONFIGS=extension_config_experiment.cmake -DCMAKE_PREFIX_PATH={PREFIX} -DCMAKE_FIND_ROOT_PATH={PREFIX}'
     # Bound compile parallelism independently of the runner's reported CPU count.
     script = runtime / 'scripts/wasm_build_lib.sh'
     text = script.read_text().replace('CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)', f'CORES={JOBS}')

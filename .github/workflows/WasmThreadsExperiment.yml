@@ -10,7 +10,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
-      WASM_BUILD_JOBS: '2'
+      WASM_BUILD_JOBS: '4'
+      CCACHE_DIR: ${{ github.workspace }}/.wasm-threads/ccache
+      CCACHE_MAXSIZE: 2G
+      CCACHE_COMPILERCHECK: content
+      CCACHE_NOHASHDIR: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,7 +34,20 @@ jobs:
         with:
           path: .wasm-threads/build/extensions/vcpkg_installed
           key: lakekeeper-wasm-pthread-pic-dependencies-v1
-      - name: Build pinned threaded runtime and extensions
+      - uses: actions/cache/restore@v4
+        with:
+          path: .wasm-threads/ccache
+          key: lakekeeper-wasm-ccache-v1-${{ github.run_id }}
+          restore-keys: lakekeeper-wasm-ccache-v1-
+      - name: Build pinned threaded extensions
+        env:
+          WASM_BUILD_PHASE: extensions
+        run: python3 -u scripts/wasm-threads-experiment/build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lakekeeper-duckdb-2.0.0-threaded-extensions
+          path: threaded-artifacts/extensions/
+      - name: Build matching threaded runtime
         run: python3 -u scripts/wasm-threads-experiment/build.py
       - uses: actions/upload-artifact@v4
         with:
@@ -42,6 +59,7 @@ jobs:
         with:
           name: wasm-threads-diagnostics
           path: |
+            threaded-artifacts/**
             .wasm-threads/build/**/CMakeCache.txt
             .wasm-threads/build/**/CMakeConfigureLog.yaml
             .wasm-threads/sources/runtime/build/**/CMakeCache.txt
@@ -50,3 +68,8 @@ jobs:
         with:
           path: .wasm-threads/build/extensions/vcpkg_installed
           key: lakekeeper-wasm-pthread-pic-dependencies-v1
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .wasm-threads/ccache
+          key: lakekeeper-wasm-ccache-v1-${{ github.run_id }}
