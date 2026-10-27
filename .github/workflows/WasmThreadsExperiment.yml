@@ -1,0 +1,41 @@
+name: Pinned Lakekeeper WASM threads experiment
+on:
+  push:
+    branches: [experiment/wasm-threads-20261027]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      WASM_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '6.0.9'
+          actions-cache-folder: emsdk-cache
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build ccache pkg-config
+          npm install --global js-beautify
+      - name: Build pinned threaded runtime and extensions
+        run: python3 -u scripts/wasm-threads-experiment/build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lakekeeper-duckdb-2.0.0-wasm-threads
+          path: threaded-artifacts/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: wasm-threads-diagnostics
+          path: |
+            .wasm-threads/build/**/CMakeCache.txt
+            .wasm-threads/build/**/CMakeConfigureLog.yaml
+            .wasm-threads/sources/runtime/build/**/CMakeCache.txt
