@@ -137,7 +137,7 @@ def main():
         'roaring': ('', ['-DROARING_BUILD_STATIC=ON', '-DENABLE_ROARING_TESTS=OFF']),
         'jansson': ('', ['-DJANSSON_BUILD_DOCS=OFF', '-DJANSSON_BUILD_SHARED_LIBS=OFF', '-DJANSSON_WITHOUT_TESTS=ON']),
         'liblzma': ('', ['-DBUILD_TESTING=OFF', '-DXZ_TOOL_XZ=OFF', '-DXZ_TOOL_XZDEC=OFF', '-DXZ_TOOL_LZMADEC=OFF', '-DXZ_TOOL_LZMAINFO=OFF']),
-        'snappy': ('', ['-DSNAPPY_BUILD_TESTS=OFF', '-DSNAPPY_BUILD_BENCHMARKS=OFF']),
+        'snappy': ('', ['-DSNAPPY_BUILD_TESTS=OFF', '-DSNAPPY_BUILD_BENCHMARKS=OFF', '-DCMAKE_CXX_FLAGS=-pthread -fPIC -Wno-error=pass-failed']),
         'lz4': ('build/cmake', ['-DLZ4_BUILD_CLI=OFF', '-DLZ4_BUILD_LEGACY_LZ4C=OFF']),
         'zstd': ('build/cmake', ['-DZSTD_BUILD_PROGRAMS=OFF', '-DZSTD_BUILD_TESTS=OFF', '-DZSTD_BUILD_SHARED=OFF']),
     }
@@ -187,6 +187,10 @@ def main():
     text = http.read_text()
     assert text.count('encodeURI(UTF8ToString(ptr2))') == 5
     http.write_text(text.replace('encodeURI(UTF8ToString(ptr2))', 'UTF8ToString(ptr2)'))
+    config_source = runtime / 'lib/src/config.cc'
+    text = config_source.read_text()
+    text = text.replace('? 4 : 1', '? 8 : 1')
+    config_source.write_text(text)
     env = os.environ.copy()
     env['EXTRA_CMAKE_FLAGS'] = '-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON'
     # Bound compile parallelism independently of the runner's reported CPU count.
@@ -202,7 +206,7 @@ def main():
     run('node', bundler, runtime, tools, OUT)
     manifest = {'duckdb_version': 'v2.0.0', 'platform': 'wasm_threads',
                 'pins': PINS, 'use_wasm_threads': True, 'runtime_etag_fix': True,
-                'default_settings': {'threads': 4, 'async_threads': 0},
+                'default_settings': {'threads': 8, 'async_threads': 0},
                 'pthread_pool_size': 8, 'files': {}}
     for path in OUT.rglob('*'):
         if path.is_file():
