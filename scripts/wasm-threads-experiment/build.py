@@ -18,7 +18,7 @@ OUT = ROOT / 'threaded-artifacts'
 JOBS = os.environ.get('WASM_BUILD_JOBS', '2')
 PINS = {
     'duckdb': ('duckdb/duckdb', 'd54cbbe3df17e8e5ce68312f483b4155836112aa'),
-    'runtime': ('duckdb/duckdb-wasm', '1f85a503e0c25f0c0980f205915de328c923f476'),
+    'runtime': ('HynekBlaha/duckdb-wasm', '359abdf38ca7b93da3dc5f9fca0dbc0a24959c06'),
     'nanoarrow': ('duckdb/duckdb-nanoarrow', 'e390b9b4f8a41e64e41488888defb27d8f1e1421'),
     'httpfs': ('duckdb/duckdb-httpfs', '77392a72077a85897db2519fae11e2c0da972b8a'),
     'iceberg': ('duckdb/duckdb-iceberg', '4c0c0874c48ec82a3e29910554891d04bcc0e988'),
@@ -213,6 +213,7 @@ def main():
     text = http.read_text()
     assert text.count('encodeURI(UTF8ToString(ptr2))') in (0, 5)
     http.write_text(text.replace('encodeURI(UTF8ToString(ptr2))', 'UTF8ToString(ptr2)'))
+    run('node', runtime / 'packages/duckdb-wasm/test/http_memory_growth.test.mjs', http)
     cmake_source = runtime / 'lib/CMakeLists.txt'
     text = cmake_source.read_text().replace('-sPTHREAD_POOL_SIZE=8', '-sPTHREAD_POOL_SIZE=32')
     cmake_source.write_text(text)
@@ -242,6 +243,9 @@ def main():
         'ws@7.5.5')
     (runtime / 'node_modules').symlink_to(tools / 'node_modules', target_is_directory=True)
     bindings = runtime / 'packages/duckdb-wasm/src/bindings'
+    generated = (bindings / 'duckdb-threads.js').read_text()
+    assert 'Module.HEAPU8' not in generated, 'Direct exported heap view in HTTP transport'
+    assert generated.count('(growMemViews(), HEAPU8).set(properArray,') == 5, 'Missing compiler heap refresh checks'
     (OUT / 'runtime').mkdir(exist_ok=True)
     shutil.copy2(bindings / 'duckdb-threads.wasm', OUT / 'runtime/duckdb-threads.wasm')
     (OUT / 'build-inputs').mkdir(exist_ok=True)
@@ -251,7 +255,7 @@ def main():
     bundler = ROOT / 'scripts/wasm-threads-experiment/bundle.mjs'
     run('node', bundler, runtime, tools, OUT)
     manifest = {'duckdb_version': 'v2.0.0', 'platform': 'wasm_threads',
-                'pins': PINS, 'use_wasm_threads': True, 'runtime_etag_fix': True,
+                'pins': PINS, 'use_wasm_threads': True, 'runtime_etag_fix': True, 'runtime_shared_heap_views_fix': True,
                 'default_settings': {'threads': 8, 'async_threads': 0},
                 'pthread_pool_size': 32, 'files': {},
                 'runtime_core_patches': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
