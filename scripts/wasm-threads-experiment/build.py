@@ -131,6 +131,7 @@ def main():
     OUT.mkdir(exist_ok=True)
     SOURCES.mkdir(exist_ok=True)
     PREFIX.mkdir(parents=True, exist_ok=True)
+    os.environ['DUCKDB_COMMIT'] = PINS['duckdb'][1]
     os.environ['CMAKE_PREFIX_PATH'] = str(PREFIX)
     os.environ['PKG_CONFIG_PATH'] = str(PREFIX / 'lib/pkgconfig')
     os.environ['PKG_CONFIG_LIBDIR'] = str(PREFIX / 'lib/pkgconfig')
@@ -165,8 +166,8 @@ def main():
 
     config = WORK / 'extensions.cmake'
     config.write_text('\n'.join([
-        'duckdb_extension_load(json)', 'duckdb_extension_load(parquet)',
-        *[f'duckdb_extension_load({name} SOURCE_DIR "{SOURCES / name}")'
+        'duckdb_extension_load(json EXTENSION_VERSION v2.0.0)', 'duckdb_extension_load(parquet EXTENSION_VERSION v2.0.0)',
+        *[f'duckdb_extension_load({name} SOURCE_DIR "{SOURCES / name}" EXTENSION_VERSION {PINS[name][1][:10]})'
           for name in ['httpfs', 'iceberg', 'avro', 'azure_wasm']], '']))
     extensions = BUILD / 'extensions'
     configure(core, extensions, '-DBUILD_EXTENSIONS_ONLY=ON', '-DBUILD_UNITTESTS=OFF',
@@ -214,7 +215,7 @@ def main():
     config_source.write_text(text)
     (runtime / 'extension_config_experiment.cmake').write_text(
         'duckdb_extension_load(json)\nduckdb_extension_load(parquet)\n'
-        'duckdb_extension_load(nanoarrow SOURCE_DIR ${DUCKDB_NANOARROW_DIR} '
+        f'duckdb_extension_load(nanoarrow SOURCE_DIR ${{DUCKDB_NANOARROW_DIR}} EXTENSION_VERSION {PINS["nanoarrow"][1][:10]} '
         'LINKED_LIBS \"../../_deps/nanoarrow-build/lib*.a\")\n')
     env = os.environ.copy()
     env['EXTRA_CMAKE_FLAGS'] = f'-DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDUCKDB_WASM_LOADABLE_EXTENSIONS=ON -DDUCKDB_EXTENSION_CONFIGS=extension_config_experiment.cmake -DCMAKE_PREFIX_PATH={PREFIX} -DCMAKE_FIND_ROOT_PATH={PREFIX}'
